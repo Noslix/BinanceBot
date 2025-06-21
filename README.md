@@ -5,6 +5,10 @@ hourly buys or sells based on market conditions and also includes an optional
 Dollar Cost Averaging (DCA) helper.
 
 
+Both Binance and Telegram credentials must be placed in this `.env` file. The
+bot automatically loads the values of `BINANCE_API_KEY`, `BINANCE_API_SECRET`,
+`TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` at startup.
+
 ## Requirements
 
 - Python 3.8+
