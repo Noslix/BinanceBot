@@ -27,11 +27,14 @@ TELEGRAM_CHAT_ID=your_chat_id       # optional
 python3 binance_dca_bot.py
 ```
 
+By default the bot trades BTC/EUR. The amount of euros used each hour is
+controlled by the `TRADE_AMOUNT_EUR` constant.
+
 The default behaviour of `binance_dca_bot.py` is now to check the market once
 per hour and either buy or sell a fixed amount depending on the current price
 relative to the Binance 24‑hour weighted average price.  The amount traded and
 the threshold used to trigger a trade can be changed by editing the
-`TRADE_AMOUNT_USDT` and `TRADE_THRESHOLD` constants in `binance_dca_bot.py`.
+`TRADE_AMOUNT_EUR` and `TRADE_THRESHOLD` constants in `binance_dca_bot.py`.
 
 The previous DCA logic is still available through the `dollar_cost_average`
 function should you wish to use it instead.

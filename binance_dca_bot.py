@@ -26,7 +26,7 @@ from telegram_bot import TelegramBot
 BASE_URL = "https://api.binance.com"
 
 # Default trading parameters
-TRADE_AMOUNT_USDT = 100.0
+TRADE_AMOUNT_EUR = 100.0
 TRADE_THRESHOLD = 0.01  # 1%
 
 
@@ -47,19 +47,19 @@ def _send_signed_request(http_method: str, url_path: str, payload: dict, api_key
         return json.loads(data)
 
 
-def buy_bitcoin_usdt(amount_usdt: float, api_key: str, api_secret: str):
+def buy_bitcoin_eur(amount_eur: float, api_key: str, api_secret: str):
     payload = {
-        "symbol": "BTCUSDT",
+        "symbol": "BTCEUR",
         "side": "BUY",
         "type": "MARKET",
-        "quoteOrderQty": amount_usdt,
+        "quoteOrderQty": amount_eur,
     }
     return _send_signed_request("POST", "/api/v3/order", payload, api_key, api_secret)
 
 
 def sell_bitcoin_btc(amount_btc: float, api_key: str, api_secret: str):
     payload = {
-        "symbol": "BTCUSDT",
+        "symbol": "BTCEUR",
         "side": "SELL",
         "type": "MARKET",
         "quantity": amount_btc,
@@ -69,7 +69,7 @@ def sell_bitcoin_btc(amount_btc: float, api_key: str, api_secret: str):
 
 def get_market_prices() -> tuple[float, float]:
     """Return the current last price and 24h weighted average price."""
-    url = f"{BASE_URL}/api/v3/ticker/24hr?symbol=BTCUSDT"
+    url = f"{BASE_URL}/api/v3/ticker/24hr?symbol=BTCEUR"
     with urllib.request.urlopen(url) as resp:
         data = json.load(resp)
     return float(data["lastPrice"]), float(data["weightedAvgPrice"])
@@ -79,14 +79,14 @@ def get_account_summary(api_key: str, api_secret: str) -> str:
     data = _send_signed_request("GET", "/api/v3/account", {}, api_key, api_secret)
     balances = {b["asset"]: float(b["free"]) + float(b["locked"]) for b in data.get("balances", [])}
     btc = balances.get("BTC", 0.0)
-    usdt = balances.get("USDT", 0.0)
-    return f"BTC: {btc} | USDT: {usdt}"
+    eur = balances.get("EUR", 0.0)
+    return f"BTC: {btc} | EUR: {eur}"
 
 
 PAUSED = False
 
 
-def dollar_cost_average(amount_usdt: float, interval_sec: int, iterations: int, api_key: str, api_secret: str, telegram: TelegramBot | None = None):
+def dollar_cost_average(amount_eur: float, interval_sec: int, iterations: int, api_key: str, api_secret: str, telegram: TelegramBot | None = None):
     next_time = time.time()
     for i in range(iterations):
         while True:
@@ -94,10 +94,10 @@ def dollar_cost_average(amount_usdt: float, interval_sec: int, iterations: int, 
                 break
             time.sleep(1)
         if telegram:
-            telegram.send_message(f"Achat {i + 1}/{iterations} de {amount_usdt} USDT de BTC")
-            telegram.log(f"buy {amount_usdt} USDT")
+            telegram.send_message(f"Achat {i + 1}/{iterations} de {amount_eur} EUR de BTC")
+            telegram.log(f"buy {amount_eur} EUR")
         try:
-            response = buy_bitcoin_usdt(amount_usdt, api_key, api_secret)
+            response = buy_bitcoin_eur(amount_eur, api_key, api_secret)
             print("Order response:", response)
         except Exception as e:
             print("Error placing order:", e)
@@ -106,7 +106,7 @@ def dollar_cost_average(amount_usdt: float, interval_sec: int, iterations: int, 
         next_time += interval_sec
 
 
-def hourly_trading_loop(amount_usdt: float, threshold: float, api_key: str, api_secret: str, telegram: TelegramBot | None = None):
+def hourly_trading_loop(amount_eur: float, threshold: float, api_key: str, api_secret: str, telegram: TelegramBot | None = None):
     """Check the market every hour and decide whether to buy or sell."""
     while True:
         while PAUSED:
@@ -128,16 +128,16 @@ def hourly_trading_loop(amount_usdt: float, threshold: float, api_key: str, api_
 
         if action == "buy":
             if telegram:
-                telegram.send_message(f"Achat {amount_usdt} USDT de BTC prix {price}")
-                telegram.log(f"buy {amount_usdt} @ {price}")
+                telegram.send_message(f"Achat {amount_eur} EUR de BTC prix {price}")
+                telegram.log(f"buy {amount_eur} @ {price}")
             try:
-                buy_bitcoin_usdt(amount_usdt, api_key, api_secret)
+                buy_bitcoin_eur(amount_eur, api_key, api_secret)
             except Exception as e:
                 print("Order error:", e)
                 if telegram:
                     telegram.send_message(f"Erreur achat: {e}")
         elif action == "sell":
-            qty = amount_usdt / price
+            qty = amount_eur / price
             if telegram:
                 telegram.send_message(f"Vente {qty:.6f} BTC prix {price}")
                 telegram.log(f"sell {qty:.6f} @ {price}")
@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
     try:
         hourly_trading_loop(
-            amount_usdt=TRADE_AMOUNT_USDT,
+            amount_eur=TRADE_AMOUNT_EUR,
             threshold=TRADE_THRESHOLD,
             api_key=API_KEY,
             api_secret=API_SECRET,
