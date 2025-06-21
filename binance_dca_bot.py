@@ -20,7 +20,7 @@ def load_env(path: str = ".env") -> None:
                 os.environ.setdefault(key.strip(), value.strip())
     except FileNotFoundError:
         pass
-
+      
 from telegram_bot import TelegramBot
 
 BASE_URL = "https://api.binance.com"
@@ -116,14 +116,17 @@ def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramB
 
 
 if __name__ == "__main__":
+  
     # Load environment variables from .env if available
     load_env()
+
     API_KEY = os.getenv("BINANCE_API_KEY")
     API_SECRET = os.getenv("BINANCE_API_SECRET")
     if not API_KEY or not API_SECRET:
         raise SystemExit("Please set BINANCE_API_KEY and BINANCE_API_SECRET environment variables")
 
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
     TELEGRAM_CHAT = os.getenv("TELEGRAM_CHAT_ID")
     telegram = None
     if TELEGRAM_TOKEN and TELEGRAM_CHAT:
