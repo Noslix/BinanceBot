@@ -23,6 +23,10 @@ TELEGRAM_TOKEN=your_bot_token       # optional
 TELEGRAM_CHAT_ID=your_chat_id       # optional
 ```
 
+Both Binance and Telegram credentials must be placed in this `.env` file. The
+bot automatically loads the values of `BINANCE_API_KEY`, `BINANCE_API_SECRET`,
+`TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` at startup.
+
 2. Run the bot:
 
 
@@ -38,6 +42,10 @@ per hour and either buy or sell a fixed amount depending on the current price
 relative to the Binance 24‑hour weighted average price.  The amount traded and
 the threshold used to trigger a trade can be changed by editing the
 `TRADE_AMOUNT_EUR` and `TRADE_THRESHOLD` constants in `binance_dca_bot.py`.
+
+On startup and whenever the bot is resumed with the `reprendre` command, it
+checks that it is connected to Binance and that trading is allowed.  A
+confirmation message is sent via Telegram if configured.
 
 The previous DCA logic is still available through the `dollar_cost_average`
 function should you wish to use it instead.

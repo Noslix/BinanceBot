@@ -8,7 +8,6 @@ import os
 from datetime import datetime
 
 
-# Charger les variables d'environnement depuis le fichier .env
 
 def load_env(path: str = ".env") -> None:
     """Load key=value pairs from a .env file into os.environ."""
@@ -85,6 +84,25 @@ def get_account_summary(api_key: str, api_secret: str) -> str:
     btc = balances.get("BTC", 0.0)
     eur = balances.get("EUR", 0.0)
     return f"BTC: {btc} | EUR: {eur}"
+
+
+def verify_connection(api_key: str, api_secret: str) -> str:
+    """Check Binance connectivity and trading permissions without placing orders."""
+    # Ping public API to ensure connectivity
+    try:
+        with urllib.request.urlopen(f"{BASE_URL}/api/v3/ping") as resp:
+            resp.read()
+    except Exception as e:
+        return f"Erreur connexion: {e}"
+
+    try:
+        data = _send_signed_request("GET", "/api/v3/account", {}, api_key, api_secret)
+        if not data.get("canTrade", True):
+            return "Connexion OK mais trading désactivé"
+    except Exception as e:
+        return f"Erreur compte: {e}"
+
+    return "Connexion Binance OK, trading possible"
 
 
 
@@ -168,7 +186,9 @@ def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramB
     elif cmd in ("reprendre", "resume"):
         if PAUSED:
             PAUSED = False
-            telegram.send_message("Programme repris")
+            status = verify_connection(api_key, api_secret)
+            telegram.send_message(f"Programme repris. {status}")
+
             telegram.log("resume")
     elif cmd == "status":
         telegram.send_message(get_account_summary(api_key, api_secret))
@@ -192,7 +212,7 @@ def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramB
 if __name__ == "__main__":
     # Load environment variables from .env if available
     load_env()
-    
+
     API_KEY = os.getenv("BINANCE_API_KEY")
     API_SECRET = os.getenv("BINANCE_API_SECRET")
     if not API_KEY or not API_SECRET:
@@ -205,7 +225,11 @@ if __name__ == "__main__":
     if TELEGRAM_TOKEN and TELEGRAM_CHAT:
         telegram = TelegramBot(TELEGRAM_TOKEN, TELEGRAM_CHAT)
         telegram.log("start")
-        telegram.send_message(f"Bot lancé. {get_account_summary(API_KEY, API_SECRET)}")
+        conn_msg = verify_connection(API_KEY, API_SECRET)
+        telegram.send_message(
+            f"Bot lancé. {conn_msg} {get_account_summary(API_KEY, API_SECRET)}"
+        )
+
         telegram.start_polling(lambda text: handle_command(text, API_KEY, API_SECRET, telegram))
 
     try:
