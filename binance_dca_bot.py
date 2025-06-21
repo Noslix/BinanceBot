@@ -1,3 +1,5 @@
+"""Bot de trading Binance pour effectuer des achats/ventes de BTC en EUR."""
+
 import hmac
 import hashlib
 import time
@@ -8,19 +10,63 @@ import os
 from datetime import datetime
 
 
-
-def load_env(path: str = ".env") -> None:
-    """Load key=value pairs from a .env file into os.environ."""
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, value = line.split("=", 1)
-                os.environ.setdefault(key.strip(), value.strip())
-    except FileNotFoundError:
-        pass
+    """Charge les paires clef=valeur d'un fichier .env dans les variables d'environnement."""
+# Paramètres de trading par défaut
+# Montant investi ou vendu à chaque itération (en EUR)
+# Seuil de variation de prix pour déclencher un trade (1% par défaut)
+TRADE_THRESHOLD = 0.01
+    """Retourne la chaîne de requête signée requise par l'API Binance."""
+    signature = hmac.new(
+        api_secret.encode("utf-8"), query_string.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+def _send_signed_request(
+    http_method: str, url_path: str, payload: dict, api_key: str, api_secret: str
+):
+    """Envoie une requête signée à l'API Binance et renvoie la réponse JSON."""
+    """Passe un ordre d'achat au marché pour un montant en euros de BTC."""
+    """Passe un ordre de vente au marché pour une quantité de BTC."""
+    """Retourne le dernier prix et le prix moyen pondéré sur 24h."""
+    """Récupère le solde du compte et formate un résumé simple."""
+    """Vérifie la connexion à Binance et que le trading est autorisé."""
+# Indique si le bot est en pause (commande Telegram "pause")
+def dollar_cost_average(
+    amount_eur: float,
+    interval_sec: int,
+    iterations: int,
+    api_key: str,
+    api_secret: str,
+    telegram: TelegramBot | None = None,
+):
+    """Effectue des achats répétés de BTC à intervalles réguliers (DCA)."""
+            # On attend le prochain intervalle ou la fin d'une éventuelle pause
+        # Calcul de l'heure de la prochaine exécution
+def hourly_trading_loop(
+    amount_eur: float,
+    threshold: float,
+    api_key: str,
+    api_secret: str,
+    telegram: TelegramBot | None = None,
+):
+    """Boucle principale: analyse du marché toutes les heures pour acheter ou vendre."""
+        # Si le bot est en pause on attend avant de continuer
+        # Si le prix baisse en dessous du seuil on achète
+        # Si le prix monte au-dessus du seuil on vend
+            # Ordre d'achat
+            # Ordre de vente
+        # Attente d'une heure avant la prochaine vérification
+    """Interprète les commandes reçues par Telegram."""
+    # Mise en pause du bot
+    # Reprise du bot
+    # Demande de statut
+    # Consultation des logs
+    # Affichage de l'aide
+    # Chargement des variables d'environnement depuis .env si présent
+        raise SystemExit("Veuillez définir BINANCE_API_KEY et BINANCE_API_SECRET")
+        # Lancement de la boucle principale de trading
+        # Nettoyage en fin d'exécution
+            telegram.send_message(
+                f"Bot arrêté. {get_account_summary(API_KEY, API_SECRET)}"
+            )
 
 
 from telegram_bot import TelegramBot
