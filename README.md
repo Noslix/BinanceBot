@@ -45,7 +45,9 @@ the threshold used to trigger a trade can be changed by editing the
 
 On startup and whenever the bot is resumed with the `reprendre` command, it
 checks that it is connected to Binance and that trading is allowed.  A
-confirmation message is sent via Telegram if configured.
+confirmation message is sent via Telegram if configured and any open orders are
+listed so you know whether some buys are still pending.
+
 
 The previous DCA logic is still available through the `dollar_cost_average`
 function should you wish to use it instead.
