@@ -4,10 +4,12 @@ This repository contains a simple Bitcoin trading bot for Binance.  It can perfo
 hourly buys or sells based on market conditions and also includes an optional
 Dollar Cost Averaging (DCA) helper.
 
+
 ## Requirements
 
 - Python 3.8+
 - The `requests` package is not required; the script uses built-in modules.
+
 - Binance API key and secret stored in a `.env` file.
 
 ## Usage
@@ -22,6 +24,7 @@ TELEGRAM_CHAT_ID=your_chat_id       # optional
 ```
 
 2. Run the bot:
+
 
 ```bash
 python3 binance_dca_bot.py
@@ -38,6 +41,7 @@ the threshold used to trigger a trade can be changed by editing the
 
 The previous DCA logic is still available through the `dollar_cost_average`
 function should you wish to use it instead.
+
 
 When Telegram integration is enabled you can control the bot with the following commands:
 
