@@ -8,6 +8,8 @@ import os
 from datetime import datetime
 
 
+# Charger les variables d'environnement depuis le fichier .env
+
 def load_env(path: str = ".env") -> None:
     """Load key=value pairs from a .env file into os.environ."""
     try:
@@ -190,6 +192,7 @@ def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramB
 if __name__ == "__main__":
     # Load environment variables from .env if available
     load_env()
+    
     API_KEY = os.getenv("BINANCE_API_KEY")
     API_SECRET = os.getenv("BINANCE_API_SECRET")
     if not API_KEY or not API_SECRET:
