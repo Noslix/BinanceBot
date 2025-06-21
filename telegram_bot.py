@@ -33,7 +33,7 @@ class TelegramBot:
         with open(self.log_file, "a", encoding="utf-8") as f:
             f.write(f"{timestamp} - {message}\n")
 
-    def send_message(self, text: str
+    def send_message(self, text: str)
         """Envoie un message simple au chat Telegram."""
 
         data = urllib.parse.urlencode({"chat_id": self.chat_id, "text": text}).encode()
