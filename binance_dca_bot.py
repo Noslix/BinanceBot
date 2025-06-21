@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 
 
+
 def load_env(path: str = ".env") -> None:
     """Load key=value pairs from a .env file into os.environ."""
     try:
@@ -20,6 +21,7 @@ def load_env(path: str = ".env") -> None:
                 os.environ.setdefault(key.strip(), value.strip())
     except FileNotFoundError:
         pass
+
 
 from telegram_bot import TelegramBot
 
@@ -63,6 +65,7 @@ def sell_bitcoin_btc(amount_btc: float, api_key: str, api_secret: str):
         "side": "SELL",
         "type": "MARKET",
         "quantity": amount_btc,
+
     }
     return _send_signed_request("POST", "/api/v3/order", payload, api_key, api_secret)
 
@@ -102,10 +105,12 @@ def verify_connection(api_key: str, api_secret: str) -> str:
     return "Connexion Binance OK, trading possible"
 
 
+
 PAUSED = False
 
 
 def dollar_cost_average(amount_eur: float, interval_sec: int, iterations: int, api_key: str, api_secret: str, telegram: TelegramBot | None = None):
+
     next_time = time.time()
     for i in range(iterations):
         while True:
@@ -117,6 +122,7 @@ def dollar_cost_average(amount_eur: float, interval_sec: int, iterations: int, a
             telegram.log(f"buy {amount_eur} EUR")
         try:
             response = buy_bitcoin_eur(amount_eur, api_key, api_secret)
+
             print("Order response:", response)
         except Exception as e:
             print("Error placing order:", e)
@@ -182,6 +188,7 @@ def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramB
             PAUSED = False
             status = verify_connection(api_key, api_secret)
             telegram.send_message(f"Programme repris. {status}")
+
             telegram.log("resume")
     elif cmd == "status":
         telegram.send_message(get_account_summary(api_key, api_secret))
@@ -205,12 +212,14 @@ def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramB
 if __name__ == "__main__":
     # Load environment variables from .env if available
     load_env()
+
     API_KEY = os.getenv("BINANCE_API_KEY")
     API_SECRET = os.getenv("BINANCE_API_SECRET")
     if not API_KEY or not API_SECRET:
         raise SystemExit("Please set BINANCE_API_KEY and BINANCE_API_SECRET environment variables")
 
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
     TELEGRAM_CHAT = os.getenv("TELEGRAM_CHAT_ID")
     telegram = None
     if TELEGRAM_TOKEN and TELEGRAM_CHAT:
@@ -220,12 +229,14 @@ if __name__ == "__main__":
         telegram.send_message(
             f"Bot lancé. {conn_msg} {get_account_summary(API_KEY, API_SECRET)}"
         )
+
         telegram.start_polling(lambda text: handle_command(text, API_KEY, API_SECRET, telegram))
 
     try:
         hourly_trading_loop(
             amount_eur=TRADE_AMOUNT_EUR,
             threshold=TRADE_THRESHOLD,
+
             api_key=API_KEY,
             api_secret=API_SECRET,
             telegram=telegram,
