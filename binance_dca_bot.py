@@ -1,3 +1,4 @@
+
 import hmac
 import hashlib
 import time
@@ -10,6 +11,7 @@ from datetime import datetime
 
 def load_env(path: str = ".env") -> None:
     """Load key=value pairs from a .env file into os.environ."""
+
     try:
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
@@ -20,6 +22,7 @@ def load_env(path: str = ".env") -> None:
                 os.environ.setdefault(key.strip(), value.strip())
     except FileNotFoundError:
         pass
+
 
 from telegram_bot import TelegramBot
 
@@ -33,6 +36,7 @@ def _sign_params(params, api_secret):
 
 
 def _send_signed_request(http_method: str, url_path: str, payload: dict, api_key: str, api_secret: str):
+
     payload["timestamp"] = int(time.time() * 1000)
     query = _sign_params(payload, api_secret)
     url = f"{BASE_URL}{url_path}?{query}"
@@ -49,6 +53,7 @@ def buy_bitcoin_usdt(amount_usdt: float, api_key: str, api_secret: str):
         "side": "BUY",
         "type": "MARKET",
         "quoteOrderQty": amount_usdt,
+
     }
     return _send_signed_request("POST", "/api/v3/order", payload, api_key, api_secret)
 
@@ -68,6 +73,7 @@ def dollar_cost_average(amount_usdt: float, interval_sec: int, iterations: int, 
     next_time = time.time()
     for i in range(iterations):
         while True:
+
             if not PAUSED and time.time() >= next_time:
                 break
             time.sleep(1)
@@ -76,6 +82,7 @@ def dollar_cost_average(amount_usdt: float, interval_sec: int, iterations: int, 
             telegram.log(f"buy {amount_usdt} USDT")
         try:
             response = buy_bitcoin_usdt(amount_usdt, api_key, api_secret)
+
             print("Order response:", response)
         except Exception as e:
             print("Error placing order:", e)
@@ -87,6 +94,7 @@ def dollar_cost_average(amount_usdt: float, interval_sec: int, iterations: int, 
 def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramBot):
     global PAUSED
     cmd = text.strip().lower()
+
     if cmd == "pause":
         PAUSED = True
         telegram.send_message("Programme en pause")
@@ -98,12 +106,14 @@ def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramB
             telegram.log("resume")
     elif cmd == "status":
         telegram.send_message(get_account_summary(api_key, api_secret))
+
     elif cmd.startswith("log"):
         parts = cmd.split()
         days = 1
         if len(parts) > 1 and parts[1].isdigit():
             days = int(parts[1])
         telegram.send_message(telegram.recent_logs(days))
+
     elif cmd in ("aide", "help"):
         telegram.send_message(
             "Commandes:\n"
@@ -117,6 +127,7 @@ def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramB
 
 if __name__ == "__main__":
     # Load environment variables from .env if available
+
     load_env()
     API_KEY = os.getenv("BINANCE_API_KEY")
     API_SECRET = os.getenv("BINANCE_API_SECRET")
@@ -124,6 +135,7 @@ if __name__ == "__main__":
         raise SystemExit("Please set BINANCE_API_KEY and BINANCE_API_SECRET environment variables")
 
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
     TELEGRAM_CHAT = os.getenv("TELEGRAM_CHAT_ID")
     telegram = None
     if TELEGRAM_TOKEN and TELEGRAM_CHAT:
@@ -138,6 +150,7 @@ if __name__ == "__main__":
             amount_usdt=100,
             interval_sec=7 * 24 * 60 * 60,
             iterations=10,
+
             api_key=API_KEY,
             api_secret=API_SECRET,
             telegram=telegram,
@@ -145,6 +158,7 @@ if __name__ == "__main__":
     finally:
         if telegram:
             telegram.send_message(f"Bot arrêté. {get_account_summary(API_KEY, API_SECRET)}")
+
             telegram.log("stop")
             telegram.stop_polling()
 
