@@ -1,8 +1,6 @@
 # Binance DCA Bot
 
-This repository contains a simple Bitcoin trading bot for Binance.  It can perform
-hourly buys or sells based on market conditions and also includes an optional
-Dollar Cost Averaging (DCA) helper.
+This repository contains a basic example of a Dollar Cost Averaging (DCA) bot for long-term Bitcoin investment on Binance.
 
 
 ## Requirements
@@ -23,10 +21,6 @@ TELEGRAM_TOKEN=your_bot_token       # optional
 TELEGRAM_CHAT_ID=your_chat_id       # optional
 ```
 
-Both Binance and Telegram credentials must be placed in this `.env` file. The
-bot automatically loads the values of `BINANCE_API_KEY`, `BINANCE_API_SECRET`,
-`TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` at startup.
-
 2. Run the bot:
 
 
@@ -34,23 +28,7 @@ bot automatically loads the values of `BINANCE_API_KEY`, `BINANCE_API_SECRET`,
 python3 binance_dca_bot.py
 ```
 
-By default the bot trades BTC/EUR. The amount of euros used each hour is
-controlled by the `TRADE_AMOUNT_EUR` constant.
-
-The default behaviour of `binance_dca_bot.py` is now to check the market once
-per hour and either buy or sell a fixed amount depending on the current price
-relative to the Binance 24‑hour weighted average price.  The amount traded and
-the threshold used to trigger a trade can be changed by editing the
-`TRADE_AMOUNT_EUR` and `TRADE_THRESHOLD` constants in `binance_dca_bot.py`.
-
-On startup and whenever the bot is resumed with the `reprendre` command, it
-checks that it is connected to Binance and that trading is allowed.  A
-confirmation message is sent via Telegram if configured and any open orders are
-listed so you know whether some buys are still pending.
-
-
-The previous DCA logic is still available through the `dollar_cost_average`
-function should you wish to use it instead.
+By default the script will invest 100 USDT in BTC every week for 10 weeks. Edit `binance_dca_bot.py` if you want to change the amount, interval, or number of iterations.
 
 
 When Telegram integration is enabled you can control the bot with the following commands:
@@ -60,6 +38,23 @@ When Telegram integration is enabled you can control the bot with the following 
 - `status` – display current balance
 - `log X` – show the last X days of log entries
 - `help` – list the commands
+
+## Volatility Bot
+
+`volatility_bot.py` monitors the hourly BTC/EUR price using the official Binance
+`Client`. If the price drops more than 3% compared to the price 12 hours before,
+it buys 5 EUR of BTC (maximum one purchase per day). Events are logged to
+`bot_volatilite.log` and the last purchase date is stored in
+`last_purchase.json`.
+
+Run it with:
+
+```bash
+python3 volatility_bot.py
+```
+
+You can also launch it in a background thread from another Python program via
+`start_volatility_bot(api_key, api_secret)`.
 
 ## Disclaimer
 
