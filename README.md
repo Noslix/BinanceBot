@@ -24,7 +24,6 @@ TELEGRAM_TOKEN=your_bot_token       # optional
 TELEGRAM_CHAT_ID=your_chat_id       # optional
 ```
 
-Purchases below Binance's minimum trade amount are ignored.
 2. Run the bot:
 
 

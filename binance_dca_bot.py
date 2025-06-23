@@ -1,25 +1,12 @@
-from typing import Optional
-
-def get_min_notional(client: Client, symbol: str = "BTCEUR") -> float:
-    """Return the minimum notional for a symbol or 0."""
-    try:
-        info = client.get_symbol_info(symbol)
-        if info:
-            for f in info.get("filters", []):
-                if f.get("filterType") == "MIN_NOTIONAL":
-                    return float(f.get("minNotional", 0))
-    except Exception:
-        pass
-    return 0.0
-
 
 import time
 import os
 from decimal import Decimal
+from typing import Optional
+
 
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
-
 
 
 def load_env(path: str = ".env") -> None:
@@ -57,6 +44,19 @@ def fetch_trade_rules(client: Client, symbol: str = "BTCEUR") -> None:
         MIN_NOTIONAL = 0.0
 
 
+def get_min_notional(client: Client, symbol: str = "BTCEUR") -> float:
+    """Return the minimum notional for a symbol or 0."""
+    try:
+        info = client.get_symbol_info(symbol)
+        if info:
+            for f in info.get("filters", []):
+                if f.get("filterType") == "MIN_NOTIONAL":
+                    return float(f.get("minNotional", 0))
+    except Exception:
+        pass
+    return 0.0
+
+
 def create_client(api_key: str, api_secret: str) -> Client:
     """Create a Binance Client instance."""
     return Client(api_key, api_secret)
@@ -80,10 +80,7 @@ def buy_bitcoin_eur(amount_eur: float, client: Client):
         side="BUY",
         type="MARKET",
         quoteOrderQty=qty,
-        if MIN_NOTIONAL == 0:
-            fetch_trade_rules(client)
-                if "NOTIONAL" in e.message.upper() and MIN_NOTIONAL == 0:
-                    telegram.send_message("R\u00e9cup\u00e9ration du minimum d'achat et nouvelle tentative la prochaine fois")
+
     )
 
 
@@ -106,8 +103,8 @@ def dollar_cost_average(
     interval_sec: int,
     iterations: int,
     client: Client,
+    telegram: Optional[TelegramBot] = None,
 
-    telegram: TelegramBot | None = None,
 ):
     """Buy BTC with a percentage of the available EUR balance on a schedule."""
     next_time = time.time()
@@ -116,6 +113,9 @@ def dollar_cost_average(
             if not PAUSED and time.time() >= next_time:
                 break
             time.sleep(1)
+        if MIN_NOTIONAL == 0:
+            fetch_trade_rules(client)
+
         amount_eur = get_eur_balance(client) * budget_ratio
         if MIN_NOTIONAL and amount_eur < MIN_NOTIONAL:
             if telegram:
@@ -138,6 +138,8 @@ def dollar_cost_average(
             print("Binance error:", e)
             if telegram:
                 telegram.send_message(f"Erreur lors de l'achat: {e.message}")
+                if "NOTIONAL" in e.message.upper() and MIN_NOTIONAL == 0:
+                    telegram.send_message("R\u00e9cup\u00e9ration du minimum d'achat et nouvelle tentative la prochaine fois")
         except Exception as e:
             print("Unexpected error:", e)
 
@@ -216,7 +218,6 @@ if __name__ == "__main__":
     finally:
         if telegram:
             telegram.send_message(f"Bot arrêté. {get_account_summary(client)}")
-
             telegram.log("stop")
             telegram.stop_polling()
 

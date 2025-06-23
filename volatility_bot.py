@@ -7,7 +7,25 @@ from datetime import datetime, timedelta
 
 MIN_NOTIONAL = 0.0
 
+from binance.client import Client
+from binance.exceptions import BinanceAPIException
 from typing import Optional
+
+
+def load_env(path: str = ".env") -> None:
+    """Load key=value pairs from a .env file into os.environ."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                os.environ.setdefault(key.strip(), value.strip())
+    except FileNotFoundError:
+        pass
+
+
 
 def get_min_notional(client: Client, symbol: str) -> float:
     try:
@@ -20,19 +38,6 @@ def get_min_notional(client: Client, symbol: str) -> float:
         pass
     return 0.0
 
-
-        MIN_NOTIONAL = get_min_notional(self.client, self.symbol)
-            if MIN_NOTIONAL == 0:
-                self._fetch_trade_rules()
-            if "NOTIONAL" in str(e).upper() and MIN_NOTIONAL == 0:
-                logging.info("Retrying next time after retrieving min notional")
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, value = line.split("=", 1)
-                os.environ.setdefault(key.strip(), value.strip())
-    except FileNotFoundError:
-        pass
 
 
 class VolatilityBot(threading.Thread):
@@ -72,15 +77,7 @@ class VolatilityBot(threading.Thread):
     def _fetch_trade_rules(self) -> None:
         """Retrieve minimum notional required for trading."""
         global MIN_NOTIONAL
-        try:
-            info = self.client.get_symbol_info(self.symbol)
-            if info:
-                for f in info.get("filters", []):
-                    if f.get("filterType") == "MIN_NOTIONAL":
-                        MIN_NOTIONAL = float(f.get("minNotional", 0))
-                        break
-        except Exception:
-            MIN_NOTIONAL = 0.0
+        MIN_NOTIONAL = get_min_notional(self.client, self.symbol)
 
 
     # Connection check
@@ -129,6 +126,9 @@ class VolatilityBot(threading.Thread):
 
     def _buy(self):
         try:
+            if MIN_NOTIONAL == 0:
+                self._fetch_trade_rules()
+
             if MIN_NOTIONAL and self.euro_amount < MIN_NOTIONAL:
                 logging.info(
                     "Amount %.2f EUR below minimum %.2f EUR, skipping", self.euro_amount, MIN_NOTIONAL
@@ -146,6 +146,9 @@ class VolatilityBot(threading.Thread):
             self._set_last_purchase_date(datetime.utcnow().date())
         except BinanceAPIException as e:
             logging.error("Binance API error during buy: %s", e)
+            if "NOTIONAL" in str(e).upper() and MIN_NOTIONAL == 0:
+                logging.info("Retrying next time after retrieving min notional")
+
         except Exception as e:
             logging.error("Unexpected error during buy: %s", e)
 
