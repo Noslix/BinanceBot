@@ -83,4 +83,5 @@ class TelegramBot:
                         continue
         except FileNotFoundError:
             return "No logs found."
+        return "\n".join(lines) if lines else "No recent logs." 
 

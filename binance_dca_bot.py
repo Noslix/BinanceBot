@@ -36,52 +36,80 @@ def _sign_params(params, api_secret):
 
 
 def _send_signed_request(http_method: str, url_path: str, payload: dict, api_key: str, api_secret: str):
-
+    """Send a signed HTTP request to the Binance API."""
     payload["timestamp"] = int(time.time() * 1000)
-    query = _sign_params(payload, api_secret)
-    url = f"{BASE_URL}{url_path}?{query}"
-    req = urllib.request.Request(url, method=http_method)
+    query = _sign_params(payload, api_secret).encode()
+    if http_method == "GET":
+        url = f"{BASE_URL}{url_path}?{query.decode()}"
+        data = None
+    else:
+        url = f"{BASE_URL}{url_path}"
+        data = query
+    req = urllib.request.Request(url, data=data, method=http_method)
+
     req.add_header("X-MBX-APIKEY", api_key)
     with urllib.request.urlopen(req) as resp:
         data = resp.read()
         return json.loads(data)
 
 
-def buy_bitcoin_usdt(amount_usdt: float, api_key: str, api_secret: str):
+def get_eur_balance(api_key: str, api_secret: str) -> float:
+    """Return the available EUR balance (free funds)."""
+    data = _send_signed_request("GET", "/api/v3/account", {}, api_key, api_secret)
+    for b in data.get("balances", []):
+        if b["asset"] == "EUR":
+            return float(b["free"])
+    return 0.0
+
+
+def buy_bitcoin_eur(amount_eur: float, api_key: str, api_secret: str):
+    """Place a market buy order on the BTCEUR pair."""
     payload = {
-        "symbol": "BTCUSDT",
+        "symbol": "BTCEUR",
         "side": "BUY",
         "type": "MARKET",
-        "quoteOrderQty": amount_usdt,
+        "quoteOrderQty": amount_eur,
 
     }
     return _send_signed_request("POST", "/api/v3/order", payload, api_key, api_secret)
 
 
 def get_account_summary(api_key: str, api_secret: str) -> str:
+    """Return a short summary of BTC and EUR balances."""
     data = _send_signed_request("GET", "/api/v3/account", {}, api_key, api_secret)
-    balances = {b["asset"]: float(b["free"]) + float(b["locked"]) for b in data.get("balances", [])}
+    balances = {b["asset"]: (float(b["free"]) + float(b["locked"])) for b in data.get("balances", [])}
     btc = balances.get("BTC", 0.0)
-    usdt = balances.get("USDT", 0.0)
-    return f"BTC: {btc} | USDT: {usdt}"
+    eur = balances.get("EUR", 0.0)
+    return f"BTC: {btc} | EUR: {eur}"
+
 
 
 PAUSED = False
 
 
-def dollar_cost_average(amount_usdt: float, interval_sec: int, iterations: int, api_key: str, api_secret: str, telegram: TelegramBot | None = None):
+def dollar_cost_average(
+    budget_ratio: float,
+    interval_sec: int,
+    iterations: int,
+    api_key: str,
+    api_secret: str,
+    telegram: TelegramBot | None = None,
+):
+    """Buy BTC with a percentage of the available EUR balance on a schedule."""
     next_time = time.time()
     for i in range(iterations):
         while True:
-
             if not PAUSED and time.time() >= next_time:
                 break
             time.sleep(1)
+        amount_eur = get_eur_balance(api_key, api_secret) * budget_ratio
         if telegram:
-            telegram.send_message(f"Achat {i + 1}/{iterations} de {amount_usdt} USDT de BTC")
-            telegram.log(f"buy {amount_usdt} USDT")
+            telegram.send_message(
+                f"Achat {i + 1}/{iterations} de {amount_eur:.2f} EUR de BTC"
+            )
+            telegram.log(f"buy {amount_eur:.2f} EUR")
         try:
-            response = buy_bitcoin_usdt(amount_usdt, api_key, api_secret)
+            response = buy_bitcoin_eur(amount_eur, api_key, api_secret)
 
             print("Order response:", response)
         except Exception as e:
@@ -145,9 +173,9 @@ if __name__ == "__main__":
         telegram.start_polling(lambda text: handle_command(text, API_KEY, API_SECRET, telegram))
 
     try:
-        # Example: invest 100 USDT every week for 10 weeks
+        # Example: invest 10% of EUR balance every week for 10 weeks
         dollar_cost_average(
-            amount_usdt=100,
+            budget_ratio=0.10,
             interval_sec=7 * 24 * 60 * 60,
             iterations=10,
 

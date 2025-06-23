@@ -2,13 +2,15 @@
 
 This repository contains a basic example of a Dollar Cost Averaging (DCA) bot for long-term Bitcoin investment on Binance.
 
-
 ## Requirements
 
 - Python 3.8+
-- The `requests` package is not required; the script uses built-in modules.
-
 - Binance API key and secret stored in a `.env` file.
+- For the optional volatility bot install the `python-binance` package:
+  ```bash
+  pip install python-binance
+  ```
+
 
 ## Usage
 
@@ -28,7 +30,7 @@ TELEGRAM_CHAT_ID=your_chat_id       # optional
 python3 binance_dca_bot.py
 ```
 
-By default the script will invest 100 USDT in BTC every week for 10 weeks. Edit `binance_dca_bot.py` if you want to change the amount, interval, or number of iterations.
+By default the script invests 10% of your available EUR balance in BTC every week for 10 weeks. Edit `binance_dca_bot.py` if you want to change the percentage, interval, or number of iterations.
 
 
 When Telegram integration is enabled you can control the bot with the following commands:
@@ -46,6 +48,9 @@ When Telegram integration is enabled you can control the bot with the following 
 it buys 5 EUR of BTC (maximum one purchase per day). Events are logged to
 `bot_volatilite.log` and the last purchase date is stored in
 `last_purchase.json`.
+The bot relies on the `python-binance` package which you can install with
+`pip install python-binance`.
+
 
 Run it with:
 
