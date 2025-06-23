@@ -1,12 +1,11 @@
 
-import hmac
-import hashlib
 import time
-import urllib.parse
-import urllib.request
-import json
 import os
-from datetime import datetime
+from decimal import Decimal
+
+from binance.client import Client
+from binance.exceptions import BinanceAPIException
+
 
 
 def load_env(path: str = ".env") -> None:
@@ -26,61 +25,58 @@ def load_env(path: str = ".env") -> None:
 
 from telegram_bot import TelegramBot
 
-BASE_URL = "https://api.binance.com"
+
+MIN_NOTIONAL = 0.0
 
 
-def _sign_params(params, api_secret):
-    query_string = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
-    signature = hmac.new(api_secret.encode("utf-8"), query_string.encode("utf-8"), hashlib.sha256).hexdigest()
-    return query_string + f"&signature={signature}"
+def fetch_trade_rules(client: Client, symbol: str = "BTCEUR") -> None:
+    """Retrieve trading rules such as minimum notional."""
+    global MIN_NOTIONAL
+    try:
+        info = client.get_symbol_info(symbol)
+        if info:
+            for f in info.get("filters", []):
+                if f.get("filterType") == "MIN_NOTIONAL":
+                    MIN_NOTIONAL = float(f.get("minNotional", 0))
+                    break
+    except Exception:
+        MIN_NOTIONAL = 0.0
 
 
-def _send_signed_request(http_method: str, url_path: str, payload: dict, api_key: str, api_secret: str):
-    """Send a signed HTTP request to the Binance API."""
-    payload["timestamp"] = int(time.time() * 1000)
-    query = _sign_params(payload, api_secret).encode()
-    if http_method == "GET":
-        url = f"{BASE_URL}{url_path}?{query.decode()}"
-        data = None
-    else:
-        url = f"{BASE_URL}{url_path}"
-        data = query
-    req = urllib.request.Request(url, data=data, method=http_method)
-
-    req.add_header("X-MBX-APIKEY", api_key)
-    with urllib.request.urlopen(req) as resp:
-        data = resp.read()
-        return json.loads(data)
+def create_client(api_key: str, api_secret: str) -> Client:
+    """Create a Binance Client instance."""
+    return Client(api_key, api_secret)
 
 
-def get_eur_balance(api_key: str, api_secret: str) -> float:
+def get_eur_balance(client: Client) -> float:
     """Return the available EUR balance (free funds)."""
-    data = _send_signed_request("GET", "/api/v3/account", {}, api_key, api_secret)
-    for b in data.get("balances", []):
+    account = client.get_account()
+    for b in account.get("balances", []):
+
         if b["asset"] == "EUR":
             return float(b["free"])
     return 0.0
 
 
-def buy_bitcoin_eur(amount_eur: float, api_key: str, api_secret: str):
+def buy_bitcoin_eur(amount_eur: float, client: Client):
     """Place a market buy order on the BTCEUR pair."""
-    payload = {
-        "symbol": "BTCEUR",
-        "side": "BUY",
-        "type": "MARKET",
-        "quoteOrderQty": amount_eur,
+    qty = float(Decimal(amount_eur).quantize(Decimal("0.01")))
+    return client.create_order(
+        symbol="BTCEUR",
+        side="BUY",
+        type="MARKET",
+        quoteOrderQty=qty,
+    )
 
-    }
-    return _send_signed_request("POST", "/api/v3/order", payload, api_key, api_secret)
 
-
-def get_account_summary(api_key: str, api_secret: str) -> str:
-    """Return a short summary of BTC and EUR balances."""
-    data = _send_signed_request("GET", "/api/v3/account", {}, api_key, api_secret)
-    balances = {b["asset"]: (float(b["free"]) + float(b["locked"])) for b in data.get("balances", [])}
+def get_account_summary(client: Client) -> str:
+    """Return a short summary of BTC and EUR balances and open orders."""
+    account = client.get_account()
+    balances = {b["asset"]: (float(b["free"]) + float(b["locked"])) for b in account.get("balances", [])}
     btc = balances.get("BTC", 0.0)
     eur = balances.get("EUR", 0.0)
-    return f"BTC: {btc} | EUR: {eur}"
+    orders = client.get_open_orders(symbol="BTCEUR")
+    return f"BTC: {btc} | EUR: {eur} | Ordres en cours: {len(orders)}"
 
 
 
@@ -91,8 +87,8 @@ def dollar_cost_average(
     budget_ratio: float,
     interval_sec: int,
     iterations: int,
-    api_key: str,
-    api_secret: str,
+    client: Client,
+
     telegram: TelegramBot | None = None,
 ):
     """Buy BTC with a percentage of the available EUR balance on a schedule."""
@@ -102,24 +98,37 @@ def dollar_cost_average(
             if not PAUSED and time.time() >= next_time:
                 break
             time.sleep(1)
-        amount_eur = get_eur_balance(api_key, api_secret) * budget_ratio
+        amount_eur = get_eur_balance(client) * budget_ratio
+        if MIN_NOTIONAL and amount_eur < MIN_NOTIONAL:
+            if telegram:
+                telegram.send_message(
+                    f"Montant {amount_eur:.2f} EUR < minimum {MIN_NOTIONAL} EUR, achat ignor\u00e9"
+                )
+                telegram.log("skip too small")
+            next_time += interval_sec
+            continue
+
         if telegram:
             telegram.send_message(
                 f"Achat {i + 1}/{iterations} de {amount_eur:.2f} EUR de BTC"
             )
             telegram.log(f"buy {amount_eur:.2f} EUR")
         try:
-            response = buy_bitcoin_eur(amount_eur, api_key, api_secret)
-
+            response = buy_bitcoin_eur(float(Decimal(amount_eur).quantize(Decimal('0.01'))), client)
             print("Order response:", response)
+        except BinanceAPIException as e:
+            print("Binance error:", e)
+            if telegram:
+                telegram.send_message(f"Erreur lors de l'achat: {e.message}")
         except Exception as e:
-            print("Error placing order:", e)
+            print("Unexpected error:", e)
+
             if telegram:
                 telegram.send_message(f"Erreur lors de l'achat: {e}")
         next_time += interval_sec
 
 
-def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramBot):
+def handle_command(text: str, client: Client, telegram: TelegramBot):
     global PAUSED
     cmd = text.strip().lower()
 
@@ -133,7 +142,7 @@ def handle_command(text: str, api_key: str, api_secret: str, telegram: TelegramB
             telegram.send_message("Programme repris")
             telegram.log("resume")
     elif cmd == "status":
-        telegram.send_message(get_account_summary(api_key, api_secret))
+        telegram.send_message(get_account_summary(client))
 
     elif cmd.startswith("log"):
         parts = cmd.split()
@@ -162,6 +171,9 @@ if __name__ == "__main__":
     if not API_KEY or not API_SECRET:
         raise SystemExit("Please set BINANCE_API_KEY and BINANCE_API_SECRET environment variables")
 
+    client = create_client(API_KEY, API_SECRET)
+    fetch_trade_rules(client)
+
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
     TELEGRAM_CHAT = os.getenv("TELEGRAM_CHAT_ID")
@@ -169,8 +181,9 @@ if __name__ == "__main__":
     if TELEGRAM_TOKEN and TELEGRAM_CHAT:
         telegram = TelegramBot(TELEGRAM_TOKEN, TELEGRAM_CHAT)
         telegram.log("start")
-        telegram.send_message(f"Bot lancé. {get_account_summary(API_KEY, API_SECRET)}")
-        telegram.start_polling(lambda text: handle_command(text, API_KEY, API_SECRET, telegram))
+        telegram.send_message(f"Bot lancé. {get_account_summary(client)}")
+        telegram.start_polling(lambda text: handle_command(text, client, telegram))
+
 
     try:
         # Example: invest 10% of EUR balance every week for 10 weeks
@@ -178,14 +191,13 @@ if __name__ == "__main__":
             budget_ratio=0.10,
             interval_sec=7 * 24 * 60 * 60,
             iterations=10,
+            client=client,
 
-            api_key=API_KEY,
-            api_secret=API_SECRET,
             telegram=telegram,
         )
     finally:
         if telegram:
-            telegram.send_message(f"Bot arrêté. {get_account_summary(API_KEY, API_SECRET)}")
+            telegram.send_message(f"Bot arrêté. {get_account_summary(client)}")
 
             telegram.log("stop")
             telegram.stop_polling()
