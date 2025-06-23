@@ -26,6 +26,7 @@ def load_env(path: str = ".env") -> None:
         pass
 
 
+
 def get_min_notional(client: Client, symbol: str) -> float:
     try:
         info = client.get_symbol_info(symbol)
@@ -36,6 +37,7 @@ def get_min_notional(client: Client, symbol: str) -> float:
     except Exception:
         pass
     return 0.0
+
 
 
 class VolatilityBot(threading.Thread):
@@ -68,6 +70,7 @@ class VolatilityBot(threading.Thread):
         )
         self._fetch_trade_rules()
 
+
     def stop(self) -> None:
         self._stop_event.set()
 
@@ -75,6 +78,7 @@ class VolatilityBot(threading.Thread):
         """Retrieve minimum notional required for trading."""
         global MIN_NOTIONAL
         MIN_NOTIONAL = get_min_notional(self.client, self.symbol)
+
 
     # Connection check
     def api_connected(self) -> bool:
@@ -124,16 +128,19 @@ class VolatilityBot(threading.Thread):
         try:
             if MIN_NOTIONAL == 0:
                 self._fetch_trade_rules()
+
             if MIN_NOTIONAL and self.euro_amount < MIN_NOTIONAL:
                 logging.info(
                     "Amount %.2f EUR below minimum %.2f EUR, skipping", self.euro_amount, MIN_NOTIONAL
                 )
                 return
+
             order = self.client.create_order(
                 symbol=self.symbol,
                 side="BUY",
                 type="MARKET",
                 quoteOrderQty=float(round(self.euro_amount, 2)),
+
             )
             logging.info("Bought %s: %s", self.symbol, order)
             self._set_last_purchase_date(datetime.utcnow().date())
@@ -141,6 +148,7 @@ class VolatilityBot(threading.Thread):
             logging.error("Binance API error during buy: %s", e)
             if "NOTIONAL" in str(e).upper() and MIN_NOTIONAL == 0:
                 logging.info("Retrying next time after retrieving min notional")
+
         except Exception as e:
             logging.error("Unexpected error during buy: %s", e)
 

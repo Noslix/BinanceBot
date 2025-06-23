@@ -1,3 +1,4 @@
+
 import urllib.parse
 import urllib.request
 import json
@@ -8,20 +9,24 @@ from datetime import datetime, timedelta
 
 class TelegramBot:
     def __init__(self, token: str, chat_id: str, log_file: str = "bot.log"):
+
         self.token = token
         self.chat_id = chat_id
         self.api_url = f"https://api.telegram.org/bot{token}"
         self.log_file = log_file
         self.offset = None
+
         self._polling_thread = None
         self._stop_event = threading.Event()
 
     def log(self, message: str):
+
         timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         with open(self.log_file, "a", encoding="utf-8") as f:
             f.write(f"{timestamp} - {message}\n")
 
     def send_message(self, text: str):
+
         data = urllib.parse.urlencode({"chat_id": self.chat_id, "text": text}).encode()
         req = urllib.request.Request(f"{self.api_url}/sendMessage", data=data)
         with urllib.request.urlopen(req) as resp:
@@ -29,6 +34,7 @@ class TelegramBot:
         self.log(f"sent: {text}")
 
     def get_updates(self):
+
         params = {"timeout": 100}
         if self.offset:
             params["offset"] = self.offset
@@ -43,6 +49,7 @@ class TelegramBot:
                     yield message["text"]
 
     def start_polling(self, handler):
+
         def _poll():
             while not self._stop_event.is_set():
                 try:
@@ -50,15 +57,18 @@ class TelegramBot:
                         handler(text)
                 except Exception:
                     time.sleep(1)
+
         self._polling_thread = threading.Thread(target=_poll, daemon=True)
         self._polling_thread.start()
 
     def stop_polling(self):
+
         self._stop_event.set()
         if self._polling_thread:
             self._polling_thread.join(timeout=1)
 
     def recent_logs(self, days: int) -> str:
+
         cutoff = datetime.utcnow() - timedelta(days=days)
         lines = []
         try:
@@ -74,3 +84,4 @@ class TelegramBot:
         except FileNotFoundError:
             return "No logs found."
         return "\n".join(lines) if lines else "No recent logs." 
+
