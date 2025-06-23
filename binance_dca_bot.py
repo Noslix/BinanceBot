@@ -1,5 +1,6 @@
 import time
 import os
+from decimal import Decimal
 
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
@@ -21,6 +22,23 @@ def load_env(path: str = ".env") -> None:
 from telegram_bot import TelegramBot
 
 
+MIN_NOTIONAL = 0.0
+
+
+def fetch_trade_rules(client: Client, symbol: str = "BTCEUR") -> None:
+    """Retrieve trading rules such as minimum notional."""
+    global MIN_NOTIONAL
+    try:
+        info = client.get_symbol_info(symbol)
+        if info:
+            for f in info.get("filters", []):
+                if f.get("filterType") == "MIN_NOTIONAL":
+                    MIN_NOTIONAL = float(f.get("minNotional", 0))
+                    break
+    except Exception:
+        MIN_NOTIONAL = 0.0
+
+
 def create_client(api_key: str, api_secret: str) -> Client:
     """Create a Binance Client instance."""
     return Client(api_key, api_secret)
@@ -37,11 +55,12 @@ def get_eur_balance(client: Client) -> float:
 
 def buy_bitcoin_eur(amount_eur: float, client: Client):
     """Place a market buy order on the BTCEUR pair."""
+    qty = float(Decimal(amount_eur).quantize(Decimal("0.01")))
     return client.create_order(
         symbol="BTCEUR",
         side="BUY",
         type="MARKET",
-        quoteOrderQty=amount_eur,
+        quoteOrderQty=qty,
     )
 
 
@@ -73,13 +92,21 @@ def dollar_cost_average(
                 break
             time.sleep(1)
         amount_eur = get_eur_balance(client) * budget_ratio
+        if MIN_NOTIONAL and amount_eur < MIN_NOTIONAL:
+            if telegram:
+                telegram.send_message(
+                    f"Montant {amount_eur:.2f} EUR < minimum {MIN_NOTIONAL} EUR, achat ignor\u00e9"
+                )
+                telegram.log("skip too small")
+            next_time += interval_sec
+            continue
         if telegram:
             telegram.send_message(
                 f"Achat {i + 1}/{iterations} de {amount_eur:.2f} EUR de BTC"
             )
             telegram.log(f"buy {amount_eur:.2f} EUR")
         try:
-            response = buy_bitcoin_eur(amount_eur, client)
+            response = buy_bitcoin_eur(float(Decimal(amount_eur).quantize(Decimal('0.01'))), client)
             print("Order response:", response)
         except BinanceAPIException as e:
             print("Binance error:", e)
@@ -132,6 +159,7 @@ if __name__ == "__main__":
         raise SystemExit("Please set BINANCE_API_KEY and BINANCE_API_SECRET environment variables")
 
     client = create_client(API_KEY, API_SECRET)
+    fetch_trade_rules(client)
 
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     TELEGRAM_CHAT = os.getenv("TELEGRAM_CHAT_ID")

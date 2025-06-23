@@ -28,7 +28,7 @@ TELEGRAM_CHAT_ID=your_chat_id       # optional
 python3 binance_dca_bot.py
 ```
 
-By default the script invests 10% of your available EUR balance in BTC every week for 10 weeks. Edit `binance_dca_bot.py` if you want to change the percentage, interval, or number of iterations.
+By default the script invests 10% of your available EUR balance in BTC every week for 10 weeks. The bot checks Binance trade rules and will skip a purchase if the calculated amount is below the exchange minimum. Edit `binance_dca_bot.py` if you want to change the percentage, interval, or number of iterations.
 
 When Telegram integration is enabled you can control the bot with the following commands:
 
