@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 MIN_NOTIONAL = 0.0
 
+
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
 
@@ -55,6 +56,7 @@ class VolatilityBot(threading.Thread):
         )
         self._fetch_trade_rules()
 
+
     def stop(self) -> None:
         self._stop_event.set()
 
@@ -70,6 +72,7 @@ class VolatilityBot(threading.Thread):
                         break
         except Exception:
             MIN_NOTIONAL = 0.0
+
 
     # Connection check
     def api_connected(self) -> bool:
@@ -122,11 +125,13 @@ class VolatilityBot(threading.Thread):
                     "Amount %.2f EUR below minimum %.2f EUR, skipping", self.euro_amount, MIN_NOTIONAL
                 )
                 return
+
             order = self.client.create_order(
                 symbol=self.symbol,
                 side="BUY",
                 type="MARKET",
                 quoteOrderQty=float(round(self.euro_amount, 2)),
+
             )
             logging.info("Bought %s: %s", self.symbol, order)
             self._set_last_purchase_date(datetime.utcnow().date())

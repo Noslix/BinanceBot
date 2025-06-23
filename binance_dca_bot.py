@@ -1,3 +1,4 @@
+
 import time
 import os
 from decimal import Decimal
@@ -6,8 +7,10 @@ from binance.client import Client
 from binance.exceptions import BinanceAPIException
 
 
+
 def load_env(path: str = ".env") -> None:
     """Load key=value pairs from a .env file into os.environ."""
+
     try:
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
@@ -18,6 +21,7 @@ def load_env(path: str = ".env") -> None:
                 os.environ.setdefault(key.strip(), value.strip())
     except FileNotFoundError:
         pass
+
 
 from telegram_bot import TelegramBot
 
@@ -48,6 +52,7 @@ def get_eur_balance(client: Client) -> float:
     """Return the available EUR balance (free funds)."""
     account = client.get_account()
     for b in account.get("balances", []):
+
         if b["asset"] == "EUR":
             return float(b["free"])
     return 0.0
@@ -74,6 +79,7 @@ def get_account_summary(client: Client) -> str:
     return f"BTC: {btc} | EUR: {eur} | Ordres en cours: {len(orders)}"
 
 
+
 PAUSED = False
 
 
@@ -82,6 +88,7 @@ def dollar_cost_average(
     interval_sec: int,
     iterations: int,
     client: Client,
+
     telegram: TelegramBot | None = None,
 ):
     """Buy BTC with a percentage of the available EUR balance on a schedule."""
@@ -100,6 +107,7 @@ def dollar_cost_average(
                 telegram.log("skip too small")
             next_time += interval_sec
             continue
+
         if telegram:
             telegram.send_message(
                 f"Achat {i + 1}/{iterations} de {amount_eur:.2f} EUR de BTC"
@@ -114,6 +122,7 @@ def dollar_cost_average(
                 telegram.send_message(f"Erreur lors de l'achat: {e.message}")
         except Exception as e:
             print("Unexpected error:", e)
+
             if telegram:
                 telegram.send_message(f"Erreur lors de l'achat: {e}")
         next_time += interval_sec
@@ -122,6 +131,7 @@ def dollar_cost_average(
 def handle_command(text: str, client: Client, telegram: TelegramBot):
     global PAUSED
     cmd = text.strip().lower()
+
     if cmd == "pause":
         PAUSED = True
         telegram.send_message("Programme en pause")
@@ -133,12 +143,14 @@ def handle_command(text: str, client: Client, telegram: TelegramBot):
             telegram.log("resume")
     elif cmd == "status":
         telegram.send_message(get_account_summary(client))
+
     elif cmd.startswith("log"):
         parts = cmd.split()
         days = 1
         if len(parts) > 1 and parts[1].isdigit():
             days = int(parts[1])
         telegram.send_message(telegram.recent_logs(days))
+
     elif cmd in ("aide", "help"):
         telegram.send_message(
             "Commandes:\n"
@@ -152,6 +164,7 @@ def handle_command(text: str, client: Client, telegram: TelegramBot):
 
 if __name__ == "__main__":
     # Load environment variables from .env if available
+
     load_env()
     API_KEY = os.getenv("BINANCE_API_KEY")
     API_SECRET = os.getenv("BINANCE_API_SECRET")
@@ -162,6 +175,7 @@ if __name__ == "__main__":
     fetch_trade_rules(client)
 
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
     TELEGRAM_CHAT = os.getenv("TELEGRAM_CHAT_ID")
     telegram = None
     if TELEGRAM_TOKEN and TELEGRAM_CHAT:
@@ -170,6 +184,7 @@ if __name__ == "__main__":
         telegram.send_message(f"Bot lancé. {get_account_summary(client)}")
         telegram.start_polling(lambda text: handle_command(text, client, telegram))
 
+
     try:
         # Example: invest 10% of EUR balance every week for 10 weeks
         dollar_cost_average(
@@ -177,11 +192,13 @@ if __name__ == "__main__":
             interval_sec=7 * 24 * 60 * 60,
             iterations=10,
             client=client,
+
             telegram=telegram,
         )
     finally:
         if telegram:
             telegram.send_message(f"Bot arrêté. {get_account_summary(client)}")
+
             telegram.log("stop")
             telegram.stop_polling()
 

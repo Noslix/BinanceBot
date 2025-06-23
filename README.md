@@ -7,9 +7,11 @@ This repository contains a basic example of a Dollar Cost Averaging (DCA) bot fo
 - Python 3.8+
 - Binance API key and secret stored in a `.env` file.
 - The bots rely on the `python-binance` package:
+
   ```bash
   pip install python-binance
   ```
+
 
 ## Usage
 
@@ -24,11 +26,13 @@ TELEGRAM_CHAT_ID=your_chat_id       # optional
 
 2. Run the bot:
 
+
 ```bash
 python3 binance_dca_bot.py
 ```
 
 By default the script invests 10% of your available EUR balance in BTC every week for 10 weeks. The bot checks Binance trade rules and will skip a purchase if the calculated amount is below the exchange minimum. Edit `binance_dca_bot.py` if you want to change the percentage, interval, or number of iterations.
+
 
 When Telegram integration is enabled you can control the bot with the following commands:
 
@@ -47,6 +51,7 @@ it buys 5 EUR of BTC (maximum one purchase per day). Events are logged to
 `last_purchase.json`.
 The bot relies on the `python-binance` package which you can install with
 `pip install python-binance`.
+
 
 Run it with:
 
