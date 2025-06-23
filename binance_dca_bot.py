@@ -1,3 +1,17 @@
+from typing import Optional
+
+def get_min_notional(client: Client, symbol: str = "BTCEUR") -> float:
+    """Return the minimum notional for a symbol or 0."""
+    try:
+        info = client.get_symbol_info(symbol)
+        if info:
+            for f in info.get("filters", []):
+                if f.get("filterType") == "MIN_NOTIONAL":
+                    return float(f.get("minNotional", 0))
+    except Exception:
+        pass
+    return 0.0
+
 
 import time
 import os
@@ -66,6 +80,10 @@ def buy_bitcoin_eur(amount_eur: float, client: Client):
         side="BUY",
         type="MARKET",
         quoteOrderQty=qty,
+        if MIN_NOTIONAL == 0:
+            fetch_trade_rules(client)
+                if "NOTIONAL" in e.message.upper() and MIN_NOTIONAL == 0:
+                    telegram.send_message("R\u00e9cup\u00e9ration du minimum d'achat et nouvelle tentative la prochaine fois")
     )
 
 

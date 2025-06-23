@@ -7,16 +7,25 @@ from datetime import datetime, timedelta
 
 MIN_NOTIONAL = 0.0
 
+from typing import Optional
 
-from binance.client import Client
-from binance.exceptions import BinanceAPIException
-
-
-def load_env(path: str = ".env") -> None:
-    """Load key=value pairs from a .env file into os.environ."""
+def get_min_notional(client: Client, symbol: str) -> float:
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
+        info = client.get_symbol_info(symbol)
+        if info:
+            for f in info.get("filters", []):
+                if f.get("filterType") == "MIN_NOTIONAL":
+                    return float(f.get("minNotional", 0))
+    except Exception:
+        pass
+    return 0.0
+
+
+        MIN_NOTIONAL = get_min_notional(self.client, self.symbol)
+            if MIN_NOTIONAL == 0:
+                self._fetch_trade_rules()
+            if "NOTIONAL" in str(e).upper() and MIN_NOTIONAL == 0:
+                logging.info("Retrying next time after retrieving min notional")
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:
                     continue
